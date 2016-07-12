@@ -152,14 +152,17 @@ class KZControllerBar: UIView {
         self.progressLine.frame = CGRectMake(0, 0, self.bounds.width, 4)
         self.progressLine.hidden = false
         self.surplusTime = kzRecordTime
-        self.timer = NSTimer(timeInterval: 1.0, target: self, selector: #selector(KZControllerBar.recordTimerAction), userInfo: nil, repeats: true)
+        if self.timer == nil {
+            self.timer = NSTimer(timeInterval: 1.0, target: self, selector: #selector(KZControllerBar.recordTimerAction), userInfo: nil, repeats: true)
+            NSRunLoop.currentRunLoop().addTimer(self.timer, forMode: NSDefaultRunLoopMode)
+        }
         self.timer.fire()
-        NSRunLoop.currentRunLoop().addTimer(self.timer, forMode: NSDefaultRunLoopMode)
     }
     
     private func endTimer() {
         self.progressLine.hidden = true
         self.timer.invalidate()
+        self.timer = nil
     }
     
     // MARK: - Actions
