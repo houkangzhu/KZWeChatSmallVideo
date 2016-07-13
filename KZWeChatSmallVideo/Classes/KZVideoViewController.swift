@@ -48,6 +48,10 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         self.view.addSubview(cancelBtn)
     }
     
+    deinit {
+        print("videoViewController deinit")
+    }
+    
     // MARK: - satup Views
     private func setupSubViews() {
         self.actionView.backgroundColor = UIColor.whiteColor()
@@ -56,7 +60,7 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         let themeColor = kzThemeBlackColor
         
         let topHeight:CGFloat = 20.0
-        let buttomHeight:CGFloat = 140.0
+        let buttomHeight:CGFloat = 120.0
         
         let allHeight = actionView.frame.height
         let allWidth = actionView.frame.width
@@ -95,8 +99,8 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         self.moveOut = moveOut
         
         let session = AVCaptureSession()
-        if session.canSetSessionPreset(AVCaptureSessionPreset640x480) {
-            session.canSetSessionPreset(AVCaptureSessionPreset640x480)
+        if session.canSetSessionPreset(AVCaptureSessionPreset352x288) {
+            session.canSetSessionPreset(AVCaptureSessionPreset352x288)
         }
         if session.canAddInput(videoInput) {
             session.addInput(videoInput)
@@ -149,23 +153,23 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     //MARK: - controllerBarDelegate
     
     func videoDidStart(controllerBar: KZControllerBar!) {
-        
+        print("视频录制开始了")
     }
     
     func videoDidEnd(controllerBar: KZControllerBar!) {
-        
+        print("视频录制结束了")
     }
     
     func videoDidCancel(controllerBar: KZControllerBar!) {
-        
+        print("视频录制已经取消了")
     }
     
     func videoWillCancel(controllerBar: KZControllerBar!) {
-        
+        print("视频录制将要取消")
     }
     
     func videoDidRecordSEC(controllerBar: KZControllerBar!) {
-        
+        print("视频录制又过了一秒")
     }
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()

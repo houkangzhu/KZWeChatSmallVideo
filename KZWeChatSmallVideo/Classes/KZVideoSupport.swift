@@ -31,6 +31,7 @@ class KZfocusView: UIView {
     // Only override drawRect: if you perform custom drawing.
     // An empty implementation adversely affects performance during animation.
     override func drawRect(rect: CGRect) {
+        super.drawRect(rect)
         // Drawing code
         let context = UIGraphicsGetCurrentContext()
         CGContextSetAllowsAntialiasing(context, true)
@@ -44,7 +45,82 @@ class KZfocusView: UIView {
 
 }
 
+class KZCloseBtn: UIButton {
+    
+    func setupView() {
+//        self.layer.backgroundColor = UIColor.whiteColor().CGColor
+//        let centX = self.center.x
+//        let centY = self.center.y
+//        let drawWidth:CGFloat = 30
+//        let drawHeight:CGFloat = 20
+//        let path = CGPathCreateMutable()
+//        CGPathMoveToPoint(path, nil, (centX - drawWidth/2), (centY + drawHeight/2))
+//        CGPathAddLineToPoint(path, nil, centX, centY - drawHeight/2)
+//        CGPathAddLineToPoint(path, nil, centX + drawWidth/2, centY + drawHeight/2)
+//        
+//        let shapeLayer = CAShapeLayer()
+//        shapeLayer.frame = self.bounds
+//        shapeLayer.strokeColor = kzThemeTineColor.CGColor
+//        shapeLayer.fillColor = UIColor.blueColor().CGColor
+//        shapeLayer.opacity = 1.0
+//        shapeLayer.lineCap = kCALineCapRound
+//        shapeLayer.lineWidth = 4.0
+//        shapeLayer.path = path
+//        self.layer.addSublayer(shapeLayer)
+    }
+    
+    
+    override func drawRect(rect: CGRect) {
+        super.drawRect(rect)
+        self.layer.backgroundColor = UIColor.whiteColor().CGColor
+        let context = UIGraphicsGetCurrentContext()
+        CGContextSetAllowsAntialiasing(context, true)
+        CGContextSetStrokeColorWithColor(context, UIColor.greenColor().CGColor)
+        CGContextSetLineWidth(context, 4.0)
+        CGContextSetLineCap(context, .Round);
+        
+        let centX = self.center.x
+        let centY = self.center.y
+        
+        let drawWidth:CGFloat = 30
+        let drawHeight:CGFloat = 20
+        
+//        let path = CGPathCreateMutable()
+//        
+//        CGPathMoveToPoint(path, nil, (centX - drawWidth/2), (centY + drawHeight/2))
+//        CGPathAddLineToPoint(path, nil, centX, centY - drawHeight/2)
+//        CGPathAddLineToPoint(path, nil, centX + drawWidth/2, centY + drawHeight/2)
+        
+        CGContextBeginPath(context);
+        
+        CGContextMoveToPoint(context, (centX - drawWidth/2), (centY + drawHeight/2))
+        CGContextAddLineToPoint(context, centX, centY - drawHeight/2)
+        CGContextAddLineToPoint(context, centX + drawWidth/2, centY + drawHeight/2)
+        
+//        CGContextDrawPath(context, .Stroke)
+        CGContextStrokePath(context)
+    }
+}
+
 class KZRecordBtn: UIView {
+    
+    var tapGesture: UITapGestureRecognizer! = nil
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        self.setuproundButton()
+        self.layer.cornerRadius = self.bounds.width/2
+        self.layer.masksToBounds = true
+        self.userInteractionEnabled = true
+    }
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    func addtarget(target:AnyObject!, action:Selector) {
+        self.tapGesture = UITapGestureRecognizer(target: target, action:action)
+        self.addGestureRecognizer(self.tapGesture)
+    }
     
     func setuproundButton() {
         let width = self.frame.width
@@ -106,18 +182,27 @@ class KZRecordBtn: UIView {
     
 }
 
-class KZControllerBar: UIView {
+class KZControllerBar: UIView , UIGestureRecognizerDelegate{
     
-    let startBtn = UIButton(type: .Custom)
+    var startBtn:KZRecordBtn? = nil
     let longPress = UILongPressGestureRecognizer()
     
     var delegate:KZControllerBarDelegate?
     
     let progressLine = UIView()
     var touchIsInside:Bool = true
+    var recordDidStart:Bool = false
     
     var timer:NSTimer! = nil
     var surplusTime:NSTimeInterval! = nil
+    
+    
+    var videoListBtn:UIButton! = nil
+    var closeVideoBtn:KZCloseBtn! = nil
+    
+    deinit {
+        print("ctrlView deinit")
+    }
     
     func setupSubViews() {
         self.layoutIfNeeded()
@@ -125,16 +210,17 @@ class KZControllerBar: UIView {
         let selfHeight = self.bounds.height
         let selfWidth = self.bounds.width
         
-        let startBtnWidth = selfHeight - 40
-        startBtn.frame = CGRectMake((selfWidth - startBtnWidth)/2, 20, startBtnWidth, startBtnWidth)
-        startBtn.backgroundColor = UIColor.yellowColor()
-        startBtn.addTarget(self, action: #selector(KZControllerBar.videoStartAction(_:)), forControlEvents: .TouchDown)
-        startBtn.addTarget(self, action: #selector(KZControllerBar.videoCancelAction), forControlEvents: .TouchUpOutside)
-        startBtn.layer.cornerRadius = startBtnWidth/2
-        startBtn.layer.masksToBounds = true
-        self.addSubview(self.startBtn)
+        let edge:CGFloat! = 20.0
         
-        self.longPress.addTarget(self, action: #selector(longpressAction(_:)))
+        
+        let startBtnWidth = selfHeight - (edge * 2)
+        
+        self.startBtn = KZRecordBtn(frame: CGRectMake((selfWidth - startBtnWidth)/2, edge, startBtnWidth, startBtnWidth))
+        self.addSubview(self.startBtn!)
+        
+        self.longPress.addTarget(self, action: #selector(KZControllerBar.longpressAction(_:)))
+        self.longPress.minimumPressDuration = 0.01
+        self.longPress.delegate = self
         self.addGestureRecognizer(self.longPress)
         
         self.progressLine.frame = CGRectMake(0, 0, selfWidth, 4)
@@ -142,13 +228,26 @@ class KZControllerBar: UIView {
         self.progressLine.hidden = true
         self.addSubview(self.progressLine)
         
+        self.surplusTime = kzRecordTime
+    
+        self.videoListBtn = UIButton(type:.Custom)
+        self.videoListBtn.frame = CGRectMake(edge, edge+startBtnWidth/6, startBtnWidth/4*3, startBtnWidth/3*2)
+        self.videoListBtn.layer.cornerRadius = 8
+        self.videoListBtn.layer.masksToBounds = true
+        self.videoListBtn.addTarget(self, action: #selector(videoListAction), forControlEvents: .TouchUpInside)
+        self.videoListBtn.backgroundColor = kzThemeTineColor
+        self.addSubview(self.videoListBtn)
         
-//        let view = KZRecordBtn(frame:CGRectMake(20, 10, 80, 80))
-//        view.setuproundButton()
-//        self.addSubview(view)
+        
+        self.closeVideoBtn = KZCloseBtn(type: .Custom)
+        self.closeVideoBtn.frame = CGRectMake(self.bounds.width - self.videoListBtn.bounds.width - edge, self.videoListBtn.frame.minY, self.videoListBtn.frame.width, self.videoListBtn.frame.height)
+        self.closeVideoBtn.setupView()
+        self.closeVideoBtn.addTarget(self, action: #selector(videoCloseAction), forControlEvents: .TouchUpInside)
+        self.addSubview(self.closeVideoBtn)
     }
     
-    private func startTimer() {
+    private func startRecordSet() {
+        self.startBtn?.alpha = 1.0
         self.progressLine.frame = CGRectMake(0, 0, self.bounds.width, 4)
         self.progressLine.hidden = false
         self.surplusTime = kzRecordTime
@@ -157,17 +256,47 @@ class KZControllerBar: UIView {
             NSRunLoop.currentRunLoop().addTimer(self.timer, forMode: NSDefaultRunLoopMode)
         }
         self.timer.fire()
+        
+        UIView.animateWithDuration(0.4, animations: {
+            self.startBtn?.alpha = 0.0
+            self.startBtn?.transform = CGAffineTransformScale(CGAffineTransformIdentity, 2.0, 2.0)
+        }) { (finished) in
+            if finished {
+                self.startBtn?.transform = CGAffineTransformIdentity
+            }
+        }
     }
     
     private func endTimer() {
         self.progressLine.hidden = true
-        self.timer.invalidate()
+        self.timer?.invalidate()
         self.timer = nil
+        
+        self.startBtn?.alpha = 1
+    }
+    
+    // MARK: - UIGestureRecognizerDelegate --
+    override func gestureRecognizerShouldBegin(gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer == self.longPress {
+            if self.surplusTime <= 0 {
+                return false
+            }
+            
+            let point = gestureRecognizer.locationInView(self)
+            let startBtnCenter = self.startBtn!.center;
+            let dx = point.x - startBtnCenter.x
+            let dy = point.y - startBtnCenter.y
+            if (pow(dx, 2) + pow(dy, 2) < pow(startBtn!.bounds.width/2, 2)) {
+                return true
+            }
+            return false
+        }
+        return true
     }
     
     // MARK: - Actions
-    func videoStartAction(sender:UIButton) {
-        self.startTimer()
+    func videoStartAction() {
+        self.startRecordSet()
         self.delegate?.videoDidStart!(self)
     }
     func videoEndAction() {
@@ -177,18 +306,19 @@ class KZControllerBar: UIView {
         self.delegate?.videoDidCancel!(self)
     }
     
-    func longpressAction(sender:UILongPressGestureRecognizer) {
-        let point = sender.locationInView(self)
-        switch sender.state {
+    func longpressAction(gestureRecognizer:UILongPressGestureRecognizer) {
+        let point = gestureRecognizer.locationInView(self)
+        switch gestureRecognizer.state {
         case .Began:
-            print("began")
+            self.videoStartAction()
+//            print("began")
             break
         case .Changed:
             self.touchIsInside = point.y >= 0
             if !touchIsInside {
                 self.delegate?.videoWillCancel!(self)
             }
-            print("changed")
+//            print("changed")
             break
         case .Ended:
             self.endTimer()
@@ -198,34 +328,47 @@ class KZControllerBar: UIView {
             else {
                 self.videoEndAction()
             }
-            print("ended")
+//            print("ended")
             break
         case .Cancelled:
             
-            print("cancelled")
+//            print("cancelled")
             break
         default:
-            print("other")
+//            print("other")
             break
         }
     }
     
     func recordTimerAction() {
-        print("timer repeat")
+//        print("timer repeat")
         let reduceLen = self.bounds.width/CGFloat(kzRecordTime)
         let oldLineLen = self.progressLine.frame.width
         var oldFrame = self.progressLine.frame
+        
         UIView.animateWithDuration(1.0, delay: 0.0, options: .CurveLinear, animations: {
+            
             oldFrame.size.width = oldLineLen - reduceLen
             self.progressLine.frame = oldFrame
             self.progressLine.center = CGPointMake(self.bounds.width/2, 2)
+        
         }) { (finished) in
+            
             self.surplusTime = self.surplusTime - 1
+            self.delegate?.videoDidRecordSEC!(self)
             if self.surplusTime <= 0.0 {
                 self.endTimer()
                 self.videoEndAction()
             }
         }
+    }
+    
+    func videoListAction(sender:UIButton) {
+        
+    }
+    
+    func videoCloseAction(sender:UIButton) {
+        
     }
 }
 
