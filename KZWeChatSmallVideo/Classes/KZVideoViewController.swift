@@ -10,13 +10,11 @@ import UIKit
 import AVFoundation
 
 
-class KZVideoViewController: UIViewController, UIViewControllerTransitioningDelegate, KZControllerBarDelegate {
+class KZVideoViewController: UIViewController, UIViewControllerTransitioningDelegate, KZControllerBarDelegate, AVCaptureFileOutputRecordingDelegate {
 
     let actionView:UIView! = UIView(frame: viewFrame)
     
     let topSlideView:UIView! = UIView()
-//    let <#name#> = <#value#>
-    
     
     let videoView:UIView! = UIView()
     let focusView:KZfocusView! = KZfocusView(frame: CGRectMake(0, 0, 60, 60))
@@ -24,10 +22,12 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     
     let ctrlBar:KZControllerBar! = KZControllerBar()
     
-    
+    var videoSession:AVCaptureSession! = nil
     var videoPreLayer:AVCaptureVideoPreviewLayer! = nil
     var videoDevice:AVCaptureDevice! = nil
     var moveOut:AVCaptureMovieFileOutput? = nil
+    
+    var currentRecord:String? = nil
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -46,6 +46,11 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         cancelBtn.frame = CGRectMake(0, 0, 60, 60)
         cancelBtn.addTarget(self, action: #selector(KZVideoViewController.cancelDismiss), forControlEvents: .TouchUpInside)
         self.view.addSubview(cancelBtn)
+    }
+    
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
     }
     
     deinit {
@@ -111,6 +116,7 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         if session.canAddOutput(moveOut) {
             session.addOutput(moveOut)
         }
+        self.videoSession = session
         
         self.videoPreLayer = AVCaptureVideoPreviewLayer(session: session)
         self.videoPreLayer.frame = self.videoView.bounds
@@ -147,6 +153,7 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     }
     
     func cancelDismiss() {
+        self.videoSession.stopRunning()
         self.dismissViewControllerAnimated(true, completion: nil)
     }
     
@@ -154,14 +161,21 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     
     func videoDidStart(controllerBar: KZControllerBar!) {
         print("视频录制开始了")
+        self.currentRecord = KZVideoUtil.getVideoPath()
+        let outUrl = NSURL(fileURLWithPath: self.currentRecord!)
+        self.moveOut?.startRecordingToOutputFileURL(outUrl, recordingDelegate: self)
     }
     
     func videoDidEnd(controllerBar: KZControllerBar!) {
         print("视频录制结束了")
+        self.moveOut?.stopRecording()
     }
     
     func videoDidCancel(controllerBar: KZControllerBar!) {
         print("视频录制已经取消了")
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1.0*Double(NSEC_PER_SEC))), dispatch_get_main_queue(), {
+            KZVideoUtil.deletefile(self.currentRecord!)
+        })
     }
     
     func videoWillCancel(controllerBar: KZControllerBar!) {
@@ -171,12 +185,25 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     func videoDidRecordSEC(controllerBar: KZControllerBar!) {
         print("视频录制又过了一秒")
     }
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    
+    func videoDidClose(controllerBar: KZControllerBar!) {
+        print("关闭界面")
+        self.cancelDismiss()
     }
     
+    func videoOpenVideoList(controllerBar: KZControllerBar!) {
+        print("查看视频列表")
+    }
     
+    // MARK: - AVCaptureFileOutputRecordingDelegate -
+    func captureOutput(captureOutput: AVCaptureFileOutput!, didStartRecordingToOutputFileAtURL fileURL: NSURL!, fromConnections connections: [AnyObject]!) {
+        print("视频已经开始录制......")
+    }
+    
+    func captureOutput(captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAtURL outputFileURL: NSURL!, fromConnections connections: [AnyObject]!, error: NSError!) {
+        print("视频完成录制......")
+        KZVideoUtil.saveThumImage(outputFileURL, second: 1)
+    }
 
     /*
     // MARK: - Navigation

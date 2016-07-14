@@ -7,23 +7,123 @@
 //
 
 import UIKit
-
+import AVFoundation
 public let kzSCREEN_WIDTH:CGFloat = UIScreen.mainScreen().bounds.width
 public let kzSCREEN_HEIGHT:CGFloat = UIScreen.mainScreen().bounds.height
 public let kzDocumentPath:String = NSSearchPathForDirectoriesInDomains(.DocumentationDirectory, .UserDomainMask, true)[0]
-
+public let kzVideoDirName:String = "kzSmailVideo"
 public let kzThemeBlackColor = UIColor.blackColor()
 public let kzThemeTineColor = UIColor.greenColor()
 public let kzRecordTime:NSTimeInterval = 10.0
 
 public let viewFrame:CGRect = CGRectMake(0, kzSCREEN_HEIGHT*0.4, kzSCREEN_WIDTH, kzSCREEN_HEIGHT*0.6)
 
-class KZUtil: NSObject {
+class KZVideoModel: NSObject {
+    var totalVideoPath:String!
+    var totalThumPath:String?
+    var recordTime:NSDate!
+    override init() {
+        super.init()
+    }
+    init(videoPath:String!, thumPath:String?, recordTime:NSDate!) {
+        super.init()
+        self.totalVideoPath = videoPath
+        self.totalThumPath = thumPath
+        self.recordTime = recordTime
+    }
+}
+
+class KZVideoUtil: NSObject {
     
-    static func videoPath(fileName:String!) -> String {
-        return kzDocumentPath.stringByAppendingString("\\\(fileName)")
+    class func getVideoList() -> [KZVideoModel] {
+        let fileManager = NSFileManager.defaultManager()
+        var totalPathList:[KZVideoModel] = Array()
+        let nameList = fileManager.subpathsAtPath(self.getVideoDirPath())!
+        for name in nameList as [NSString] {
+            if name.hasSuffix(".JPG") {
+                let model = KZVideoModel()
+                let totalThumPath = (self.getVideoDirPath() as NSString).stringByAppendingPathComponent(name as String)
+                model.totalThumPath = totalThumPath
+                let totalVideoPath = totalThumPath.stringByReplacingOccurrencesOfString("JPG", withString: "MOV")
+                if fileManager.fileExistsAtPath(totalThumPath) {
+                    model.totalVideoPath = totalVideoPath
+                }
+                let timeString = name.substringToIndex(name.length-4)
+                let dateformate = NSDateFormatter()
+                dateformate.dateFormat = "yyyy-MM-dd_HH:mm:ss"
+                let date = dateformate.dateFromString(timeString)
+                model.recordTime = date
+                
+                totalPathList.append(model)
+            }
+        }
+        return totalPathList
     }
     
+    class func getSortVideoList() -> [KZVideoModel] {
+        let oldList = self.getVideoList() as NSArray
+        
+    }
+    
+    class func saveThumImage(videoUrl: NSURL, second: Int64) {
+        let urlSet = AVURLAsset(URL: videoUrl)
+        let imageGenerator = AVAssetImageGenerator(asset: urlSet)
+        
+        let time = CMTimeMake(second, 10)
+//        var actualTime:CMTime?
+        do {
+            let cgImage = try imageGenerator.copyCGImageAtTime(time, actualTime: nil)
+//            CMTimeShow(actualTime!)
+            let image = UIImage(CGImage: cgImage)
+            let imgJPGData = UIImageJPEGRepresentation(image, 1.0)
+            
+            let videoPath = (videoUrl.absoluteString as NSString).stringByReplacingOccurrencesOfString("file://", withString: "")
+            let thumPath = (videoPath as NSString).stringByReplacingOccurrencesOfString("MOV", withString: "JPG")
+            let isok = imgJPGData!.writeToFile(thumPath, atomically: true)
+            print("保存成功!\(isok)")
+        }
+        catch let error as NSError {
+            print("缩略图获取失败:\(error)")
+        }
+    }
+    
+    class func getVideoPath() -> String {
+        let currentDate = NSDate()
+        let dataformate = NSDateFormatter()
+        dataformate.dateFormat = "yyyy-MM-dd_HH:mm:ss"
+        let videoName = dataformate.stringFromDate(currentDate)
+        let dirPath = self.getVideoDirPath()
+        return (dirPath as NSString).stringByAppendingPathComponent(videoName+".MOV")
+    }
+    
+    class func deletefile(filePath: String!) {
+        let fileManager = NSFileManager.defaultManager()
+        do {
+            try fileManager.removeItemAtPath(filePath)
+        }
+        catch let error as NSError {
+            print("删除失败:\(error)")
+        }
+    }
+    
+    class func getVideoDirPath() -> String {
+        return self.getDocumentSubPath(kzVideoDirName)
+    }
+    
+    class func getDocumentSubPath(dirName:String!) -> String {
+        return (kzDocumentPath as NSString).stringByAppendingPathComponent(dirName)
+    }
+    
+    override class func initialize() {
+        let fileManager = NSFileManager.defaultManager()
+        let dirPath = self.getVideoDirPath()
+        do {
+            try fileManager.createDirectoryAtPath(dirPath, withIntermediateDirectories: true, attributes: nil)
+        }
+        catch let error as NSError {
+            print("创建文件夹失败:\(error.description)")
+        }
+    }
 }
 
 class KZfocusView: UIView {
@@ -46,58 +146,51 @@ class KZfocusView: UIView {
 }
 
 class KZCloseBtn: UIButton {
-    
+    /*
     func setupView() {
-//        self.layer.backgroundColor = UIColor.whiteColor().CGColor
-//        let centX = self.center.x
-//        let centY = self.center.y
-//        let drawWidth:CGFloat = 30
-//        let drawHeight:CGFloat = 20
-//        let path = CGPathCreateMutable()
-//        CGPathMoveToPoint(path, nil, (centX - drawWidth/2), (centY + drawHeight/2))
-//        CGPathAddLineToPoint(path, nil, centX, centY - drawHeight/2)
-//        CGPathAddLineToPoint(path, nil, centX + drawWidth/2, centY + drawHeight/2)
-//        
-//        let shapeLayer = CAShapeLayer()
-//        shapeLayer.frame = self.bounds
-//        shapeLayer.strokeColor = kzThemeTineColor.CGColor
-//        shapeLayer.fillColor = UIColor.blueColor().CGColor
-//        shapeLayer.opacity = 1.0
-//        shapeLayer.lineCap = kCALineCapRound
-//        shapeLayer.lineWidth = 4.0
-//        shapeLayer.path = path
-//        self.layer.addSublayer(shapeLayer)
+        self.layer.opaque = true
+        let centX = self.bounds.width/2
+        let centY = self.bounds.height/2
+        let drawWidth:CGFloat = 30
+        let drawHeight:CGFloat = 20
+        let path = CGPathCreateMutable()
+        var transform:CGAffineTransform = CGAffineTransformIdentity
+        CGPathMoveToPoint(path, &transform, (centX - drawWidth/2), (centY + drawHeight/2))
+        CGPathAddLineToPoint(path, &transform, centX, centY - drawHeight/2)
+        CGPathAddLineToPoint(path, &transform, centX + drawWidth/2, centY + drawHeight/2)
+        
+        let shapeLayer = CAShapeLayer()
+        shapeLayer.frame = self.bounds
+        shapeLayer.strokeColor = kzThemeTineColor.CGColor
+        shapeLayer.fillColor = UIColor.clearColor().CGColor
+        shapeLayer.opacity = 1.0
+        shapeLayer.lineCap = kCALineCapRound
+        shapeLayer.lineWidth = 4.0
+        shapeLayer.path = path
+        self.layer.addSublayer(shapeLayer)
     }
-    
+    */
     
     override func drawRect(rect: CGRect) {
         super.drawRect(rect)
-        self.layer.backgroundColor = UIColor.whiteColor().CGColor
+        
         let context = UIGraphicsGetCurrentContext()
         CGContextSetAllowsAntialiasing(context, true)
-        CGContextSetStrokeColorWithColor(context, UIColor.greenColor().CGColor)
-        CGContextSetLineWidth(context, 4.0)
+        CGContextSetStrokeColorWithColor(context, UIColor.grayColor().CGColor)
+        CGContextSetLineWidth(context, 3.0)
         CGContextSetLineCap(context, .Round);
         
-        let centX = self.center.x
-        let centY = self.center.y
-        
-        let drawWidth:CGFloat = 30
-        let drawHeight:CGFloat = 20
-        
-//        let path = CGPathCreateMutable()
-//        
-//        CGPathMoveToPoint(path, nil, (centX - drawWidth/2), (centY + drawHeight/2))
-//        CGPathAddLineToPoint(path, nil, centX, centY - drawHeight/2)
-//        CGPathAddLineToPoint(path, nil, centX + drawWidth/2, centY + drawHeight/2)
+        let centX = self.bounds.width/2
+        let centY = self.bounds.height/2
+        let drawWidth:CGFloat = 22
+        let drawHeight:CGFloat = 10
         
         CGContextBeginPath(context);
         
-        CGContextMoveToPoint(context, (centX - drawWidth/2), (centY + drawHeight/2))
-        CGContextAddLineToPoint(context, centX, centY - drawHeight/2)
-        CGContextAddLineToPoint(context, centX + drawWidth/2, centY + drawHeight/2)
+        CGContextMoveToPoint(context, (centX - drawWidth/2), (centY - drawHeight/2))
+        CGContextAddLineToPoint(context, centX, centY + drawHeight/2)
+        CGContextAddLineToPoint(context, centX + drawWidth/2, centY - drawHeight/2)
         
-//        CGContextDrawPath(context, .Stroke)
         CGContextStrokePath(context)
     }
 }
@@ -235,20 +328,27 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         self.videoListBtn.layer.cornerRadius = 8
         self.videoListBtn.layer.masksToBounds = true
         self.videoListBtn.addTarget(self, action: #selector(videoListAction), forControlEvents: .TouchUpInside)
-        self.videoListBtn.backgroundColor = kzThemeTineColor
+//        self.videoListBtn.backgroundColor = kzThemeTineColor
         self.addSubview(self.videoListBtn)
+        let videoList = KZVideoUtil.getVideoList()
+        if videoList.count == 0 {
+            self.videoListBtn.hidden = true
+        }
+        else {
+            self.videoListBtn.setBackgroundImage(UIImage(contentsOfFile: (videoList.first?.totalThumPath!)!), forState: .Normal)
+        }
         
         
+        let closeBtnWidth = self.videoListBtn.frame.height
         self.closeVideoBtn = KZCloseBtn(type: .Custom)
-        self.closeVideoBtn.frame = CGRectMake(self.bounds.width - self.videoListBtn.bounds.width - edge, self.videoListBtn.frame.minY, self.videoListBtn.frame.width, self.videoListBtn.frame.height)
-        self.closeVideoBtn.setupView()
+        self.closeVideoBtn.frame = CGRectMake(self.bounds.width - closeBtnWidth - edge, self.videoListBtn.frame.minY, closeBtnWidth, closeBtnWidth)
         self.closeVideoBtn.addTarget(self, action: #selector(videoCloseAction), forControlEvents: .TouchUpInside)
         self.addSubview(self.closeVideoBtn)
     }
     
     private func startRecordSet() {
         self.startBtn?.alpha = 1.0
-        self.progressLine.frame = CGRectMake(0, 0, self.bounds.width, 4)
+        self.progressLine.frame = CGRectMake(0, 0, self.bounds.width, 2)
         self.progressLine.hidden = false
         self.surplusTime = kzRecordTime
         if self.timer == nil {
@@ -350,7 +450,7 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
             
             oldFrame.size.width = oldLineLen - reduceLen
             self.progressLine.frame = oldFrame
-            self.progressLine.center = CGPointMake(self.bounds.width/2, 2)
+            self.progressLine.center = CGPointMake(self.bounds.width/2, self.progressLine.bounds.height/2)
         
         }) { (finished) in
             
@@ -364,11 +464,11 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
     }
     
     func videoListAction(sender:UIButton) {
-        
+        self.delegate?.videoOpenVideoList!(self)
     }
     
     func videoCloseAction(sender:UIButton) {
-        
+        self.delegate?.videoDidClose!(self)
     }
 }
 
@@ -383,4 +483,9 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
     optional func videoWillCancel(controllerBar:KZControllerBar!)
     
     optional func videoDidRecordSEC(controllerBar:KZControllerBar!)
+    
+    optional func videoDidClose(controllerBar:KZControllerBar!)
+    
+    optional func videoOpenVideoList(controllerBar:KZControllerBar!)
+    
 }
