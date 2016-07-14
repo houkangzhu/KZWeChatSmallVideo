@@ -62,7 +62,7 @@ class KZVideoUtil: NSObject {
     
     class func getSortVideoList() -> [KZVideoModel] {
         let oldList = self.getVideoList() as NSArray
-        return oldList
+        return oldList as! [KZVideoModel]
     }
     
     class func saveThumImage(videoUrl: NSURL, second: Int64) {
