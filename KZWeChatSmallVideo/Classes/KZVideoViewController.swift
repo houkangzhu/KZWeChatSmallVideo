@@ -9,48 +9,80 @@
 import UIKit
 import AVFoundation
 
+@objc public protocol KZVideoViewControllerDelegate {
+    
+    optional func videoViewController(videoViewController: KZVideoViewController!, didRecordVideo video:KZVideoModel!)
+    
+    optional func videoViewControllerDidCancel(videoViewController: KZVideoViewController!)
+    
+}
 
-class KZVideoViewController: UIViewController, UIViewControllerTransitioningDelegate, KZControllerBarDelegate, AVCaptureFileOutputRecordingDelegate {
+private var currentVC:KZVideoViewController? = nil
 
-    let actionView:UIView! = UIView(frame: viewFrame)
+public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCaptureFileOutputRecordingDelegate {
+
+    private let view:UIView = UIView(frame:UIScreen.mainScreen().bounds)
     
-    let topSlideView:UIView! = UIView()
+    private let actionView:UIView! = UIView(frame: viewFrame)
     
-    let videoView:UIView! = UIView()
-    let focusView:KZfocusView! = KZfocusView(frame: CGRectMake(0, 0, 60, 60))
+    private let topSlideView:KZStatusBar! = KZStatusBar()
     
+    private let videoView:UIView! = UIView()
+    private let focusView:KZfocusView! = KZfocusView(frame: CGRectMake(0, 0, 60, 60))
+    private let statusInfo:UILabel = UILabel()
+    private let cancelInfo:UILabel = UILabel()
     
-    let ctrlBar:KZControllerBar! = KZControllerBar()
+    private let ctrlBar:KZControllerBar! = KZControllerBar()
     
-    var videoSession:AVCaptureSession! = nil
-    var videoPreLayer:AVCaptureVideoPreviewLayer! = nil
-    var videoDevice:AVCaptureDevice! = nil
-    var moveOut:AVCaptureMovieFileOutput? = nil
+    private var videoSession:AVCaptureSession! = nil
+    private var videoPreLayer:AVCaptureVideoPreviewLayer! = nil
+    private var videoDevice:AVCaptureDevice! = nil
+    private var moveOut:AVCaptureMovieFileOutput? = nil
     
-    var currentRecord:String? = nil
+    private var currentRecord:KZVideoModel? = nil
+    private var currentRecordIsCancel:Bool = false
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        self.view.backgroundColor = UIColor ( red: 0.4, green: 0.8, blue: 1.0, alpha: 1.0 )
-        self.setupSubViews()
+    public var delegate:KZVideoViewControllerDelegate? = nil
+    
+    func startAnimation() {
+        
+        self.controllerSetup()
+        currentVC = self
+        let keyWindow = UIApplication.sharedApplication().delegate?.window!
+        keyWindow?.addSubview(self.view)
+        self.actionView.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, kzSCREEN_HEIGHT*0.6)
+        UIView.animateWithDuration(0.3, delay: 0.0, options: .CurveEaseInOut, animations: { 
+            self.actionView.transform = CGAffineTransformIdentity
+            self.view.backgroundColor = UIColor( red: 0.0, green: 0.0, blue: 0.0, alpha: 0.4)
+            }) { (finished) in
+        }
         do {
             try self.setupVideo()
         }
         catch let error as NSError {
             print("error: \(error)")
         }
-        
+    }
+    
+    func endAnimation() {
+        UIView.animateWithDuration(0.3, animations: { 
+            self.view.backgroundColor = UIColor.clearColor()
+            self.actionView.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, kzSCREEN_HEIGHT*0.6)
+            }) { (finished) in
+            self.view.removeFromSuperview()
+            currentVC = nil
+        }
+    }
+    
+    private func controllerSetup() {
+        self.view.backgroundColor = UIColor.clearColor()
+        self.setupSubViews()
         // 
         let cancelBtn = UIButton(type: .Custom)
         cancelBtn.titleLabel?.text = "cancel"
         cancelBtn.frame = CGRectMake(0, 0, 60, 60)
         cancelBtn.addTarget(self, action: #selector(KZVideoViewController.cancelDismiss), forControlEvents: .TouchUpInside)
         self.view.addSubview(cancelBtn)
-    }
-    
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
     }
     
     deinit {
@@ -89,6 +121,23 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
         self.videoView.addGestureRecognizer(tapGesture)
         
         self.focusView.backgroundColor = UIColor.clearColor()
+        
+        
+        self.statusInfo.frame = CGRectMake(0, self.videoView.frame.maxY - 30, self.videoView.frame.width, 20)
+        self.statusInfo.textAlignment = .Center
+        self.statusInfo.font = UIFont.systemFontOfSize(14.0)
+        self.statusInfo.textColor = UIColor.whiteColor()
+        self.statusInfo.hidden = true
+        self.actionView.addSubview(self.statusInfo)
+        
+        self.cancelInfo.frame = CGRectMake(0, 0, 120, 24)
+        self.cancelInfo.center = self.videoView.center
+        self.cancelInfo.textAlignment = .Center
+        self.cancelInfo.textColor = kzThemeWhiteColor
+        self.cancelInfo.backgroundColor = kzThemeWaringColor
+        self.cancelInfo.hidden = true
+        self.actionView.addSubview(self.cancelInfo)
+        
     }
     // MARK: - setup Video
     private func setupVideo() throws {
@@ -154,36 +203,61 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     
     func cancelDismiss() {
         self.videoSession.stopRunning()
-        self.dismissViewControllerAnimated(true, completion: nil)
+//        self.dismissViewControllerAnimated(true, completion: nil)
+        self.endAnimation()
     }
     
     //MARK: - controllerBarDelegate
     
     func videoDidStart(controllerBar: KZControllerBar!) {
         print("视频录制开始了")
-        self.currentRecord = KZVideoUtil.getVideoPath()
-        let outUrl = NSURL(fileURLWithPath: self.currentRecord!)
+        self.currentRecord = KZVideoUtil.createNewVideo()
+        self.currentRecordIsCancel = false
+        let outUrl = NSURL(fileURLWithPath: self.currentRecord!.totalVideoPath)
         self.moveOut?.startRecordingToOutputFileURL(outUrl, recordingDelegate: self)
+        self.topSlideView.isRecoding = true
+        
+        self.statusInfo.textColor = kzThemeTineColor
+        self.statusInfo.text = "↑上移取消"
+        self.statusInfo.hidden = false
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(0.5*Double(NSEC_PER_SEC))), dispatch_get_main_queue(), {
+            self.statusInfo.hidden = true
+        })
     }
     
     func videoDidEnd(controllerBar: KZControllerBar!) {
         print("视频录制结束了")
         self.moveOut?.stopRecording()
+        self.topSlideView.isRecoding = false
+        
+        self.delegate?.videoViewController!(self, didRecordVideo: self.currentRecord!)
     }
     
     func videoDidCancel(controllerBar: KZControllerBar!) {
         print("视频录制已经取消了")
+        self.moveOut?.stopRecording()
+        self.currentRecordIsCancel = true
+        self.delegate?.videoViewControllerDidCancel!(self)
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(1.0*Double(NSEC_PER_SEC))), dispatch_get_main_queue(), {
-            KZVideoUtil.deletefile(self.currentRecord!)
+            KZVideoUtil.deletefile(self.currentRecord!.totalVideoPath)
         })
     }
     
     func videoWillCancel(controllerBar: KZControllerBar!) {
         print("视频录制将要取消")
+        if !self.cancelInfo.hidden {
+            return
+        }
+        self.cancelInfo.text = "松手取消"
+        self.cancelInfo.hidden = false
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(0.5*Double(NSEC_PER_SEC))), dispatch_get_main_queue(), {
+            self.cancelInfo.hidden = true
+        })
     }
     
     func videoDidRecordSEC(controllerBar: KZControllerBar!) {
         print("视频录制又过了一秒")
+        self.topSlideView.isRecoding = true
     }
     
     func videoDidClose(controllerBar: KZControllerBar!) {
@@ -193,26 +267,37 @@ class KZVideoViewController: UIViewController, UIViewControllerTransitioningDele
     
     func videoOpenVideoList(controllerBar: KZControllerBar!) {
         print("查看视频列表")
+        let listVideoVC = KZVideoListViewController()
+//        listVideoVC.view.frame = self.view.frame
+//        self.view.addSubview(listVideoVC.view)
+//        self.addChildViewController(listVideoVC)
+        listVideoVC.showAniamtion()
     }
     
     // MARK: - AVCaptureFileOutputRecordingDelegate -
-    func captureOutput(captureOutput: AVCaptureFileOutput!, didStartRecordingToOutputFileAtURL fileURL: NSURL!, fromConnections connections: [AnyObject]!) {
+    public func captureOutput(captureOutput: AVCaptureFileOutput!, didStartRecordingToOutputFileAtURL fileURL: NSURL!, fromConnections connections: [AnyObject]!) {
         print("视频已经开始录制......")
     }
     
-    func captureOutput(captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAtURL outputFileURL: NSURL!, fromConnections connections: [AnyObject]!, error: NSError!) {
+    public func captureOutput(captureOutput: AVCaptureFileOutput!, didFinishRecordingToOutputFileAtURL outputFileURL: NSURL!, fromConnections connections: [AnyObject]!, error: NSError!) {
         print("视频完成录制......")
-        KZVideoUtil.saveThumImage(outputFileURL, second: 1)
+        if !currentRecordIsCancel {
+            KZVideoUtil.saveThumImage(outputFileURL, second: 1)
+        }
     }
 
     /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
+    // MARK: - UIViewControllerTransitioningDelegate
+    func animationControllerForPresentedController(presented: UIViewController, presentingController presenting: UIViewController, sourceController source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        let transition = KZTransitionManager()
+        transition.transitionType = .Present
+        return transition
     }
-    */
 
+    func animationControllerForDismissedController(dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        let transition = KZTransitionManager()
+        transition.transitionType = .Dismiss
+        return transition
+    }
+     */
 }

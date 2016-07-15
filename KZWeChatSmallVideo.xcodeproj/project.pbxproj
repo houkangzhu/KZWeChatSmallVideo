@@ -14,8 +14,10 @@
 		452CD99A1D3386D600EFE534 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 452CD9981D3386D600EFE534 /* LaunchScreen.storyboard */; };
 		452CD9A51D33895900EFE534 /* KZVideoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452CD9A41D33895900EFE534 /* KZVideoViewController.swift */; };
 		452CD9A71D338B8700EFE534 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 452CD9A61D338B8700EFE534 /* AVFoundation.framework */; };
+		455E03D51D389996001034C2 /* KZVideoListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 455E03D41D389996001034C2 /* KZVideoListViewController.swift */; };
 		458B05F91D34BE730045F2A9 /* KZVideoSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 458B05F81D34BE730045F2A9 /* KZVideoSupport.swift */; };
 		458B05FB1D34D6EC0045F2A9 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 458B05FA1D34D6EC0045F2A9 /* CoreGraphics.framework */; };
+		4594A2481D38D42600303ACC /* bg.png in Resources */ = {isa = PBXBuildFile; fileRef = 4594A2471D38D42600303ACC /* bg.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,8 +30,10 @@
 		452CD99B1D3386D600EFE534 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		452CD9A41D33895900EFE534 /* KZVideoViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KZVideoViewController.swift; sourceTree = "<group>"; };
 		452CD9A61D338B8700EFE534 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		455E03D41D389996001034C2 /* KZVideoListViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KZVideoListViewController.swift; sourceTree = "<group>"; };
 		458B05F81D34BE730045F2A9 /* KZVideoSupport.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KZVideoSupport.swift; sourceTree = "<group>"; };
 		458B05FA1D34D6EC0045F2A9 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		4594A2471D38D42600303ACC /* bg.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = bg.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +70,7 @@
 		452CD98E1D3386D600EFE534 /* KZWeChatSmallVideo */ = {
 			isa = PBXGroup;
 			children = (
+				4594A2471D38D42600303ACC /* bg.png */,
 				452CD98F1D3386D600EFE534 /* AppDelegate.swift */,
 				452CD9911D3386D600EFE534 /* ViewController.swift */,
 				452CD9A31D33895900EFE534 /* Classes */,
@@ -81,6 +86,7 @@
 			isa = PBXGroup;
 			children = (
 				452CD9A41D33895900EFE534 /* KZVideoViewController.swift */,
+				455E03D41D389996001034C2 /* KZVideoListViewController.swift */,
 				458B05F81D34BE730045F2A9 /* KZVideoSupport.swift */,
 			);
 			path = Classes;
@@ -146,6 +152,7 @@
 			files = (
 				452CD99A1D3386D600EFE534 /* LaunchScreen.storyboard in Resources */,
 				452CD9971D3386D600EFE534 /* Assets.xcassets in Resources */,
+				4594A2481D38D42600303ACC /* bg.png in Resources */,
 				452CD9951D3386D600EFE534 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -158,6 +165,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				458B05F91D34BE730045F2A9 /* KZVideoSupport.swift in Sources */,
+				455E03D51D389996001034C2 /* KZVideoListViewController.swift in Sources */,
 				452CD9921D3386D600EFE534 /* ViewController.swift in Sources */,
 				452CD9A51D33895900EFE534 /* KZVideoViewController.swift in Sources */,
 				452CD9901D3386D600EFE534 /* AppDelegate.swift in Sources */,
@@ -276,6 +284,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = KZWeChatSmallVideo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.houkangzhu.KZWeChatSmallVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -287,6 +296,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = KZWeChatSmallVideo/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.houkangzhu.KZWeChatSmallVideo;
 				PRODUCT_NAME = "$(TARGET_NAME)";

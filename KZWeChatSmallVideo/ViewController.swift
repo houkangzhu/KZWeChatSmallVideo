@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController , KZVideoViewControllerDelegate{
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -22,8 +22,17 @@ class ViewController: UIViewController {
 
     @IBAction func videoAction(sender: AnyObject) {
         let videoVC = KZVideoViewController()
-        self.presentViewController(videoVC, animated: true, completion: nil)
+        videoVC.delegate = self
+//        self.presentViewController(videoVC, animated: true, completion: nil)
+        videoVC.startAnimation()
     }
 
+    func videoViewController(videoViewController: KZVideoViewController!, didRecordVideo video: KZVideoModel!) {
+        
+    }
+    
+    func videoViewControllerDidCancel(videoViewController: KZVideoViewController!) {
+        
+    }
 }
 

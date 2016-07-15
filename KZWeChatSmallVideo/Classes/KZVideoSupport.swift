@@ -14,11 +14,15 @@ public let kzDocumentPath:String = NSSearchPathForDirectoriesInDomains(.Document
 public let kzVideoDirName:String = "kzSmailVideo"
 public let kzThemeBlackColor = UIColor.blackColor()
 public let kzThemeTineColor = UIColor.greenColor()
+public let kzThemeWaringColor = UIColor.redColor()
+public let kzThemeWhiteColor = UIColor.whiteColor()
+public let kzThemeGraryColor = UIColor.grayColor()
 public let kzRecordTime:NSTimeInterval = 10.0
 
 public let viewFrame:CGRect = CGRectMake(0, kzSCREEN_HEIGHT*0.4, kzSCREEN_WIDTH, kzSCREEN_HEIGHT*0.6)
 
-class KZVideoModel: NSObject {
+// MARK: -  Model Define
+public class KZVideoModel: NSObject {
     var totalVideoPath:String!
     var totalThumPath:String?
     var recordTime:NSDate!
@@ -32,8 +36,10 @@ class KZVideoModel: NSObject {
         self.recordTime = recordTime
     }
 }
-
+// MARK: - Util --
 class KZVideoUtil: NSObject {
+    
+//    static var videoList:[KZVideoModel]! = Array()
     
     class func getVideoList() -> [KZVideoModel] {
         let fileManager = NSFileManager.defaultManager()
@@ -61,8 +67,25 @@ class KZVideoUtil: NSObject {
     }
     
     class func getSortVideoList() -> [KZVideoModel] {
+//        if self.videoList != nil && self.videoList?.count > 0 {
+//            return self.videoList!
+//        }
+        
         let oldList = self.getVideoList() as NSArray
-        return oldList as! [KZVideoModel]
+        let sortList = oldList.sortedArrayUsingComparator { (obj1, obj2) -> NSComparisonResult in
+            let model1 = obj1 as! KZVideoModel
+            let model2 = obj2 as! KZVideoModel
+            let compare = model1.recordTime.compare(model2.recordTime)
+            switch compare {
+            case .OrderedDescending:
+                return .OrderedAscending
+            case .OrderedAscending:
+                return .OrderedDescending
+            default:
+                return compare
+            }
+        }
+        return sortList as! [KZVideoModel]
     }
     
     class func saveThumImage(videoUrl: NSURL, second: Int64) {
@@ -87,19 +110,26 @@ class KZVideoUtil: NSObject {
         }
     }
     
-    class func getVideoPath() -> String {
+    class func createNewVideo() -> KZVideoModel {
         let currentDate = NSDate()
         let dataformate = NSDateFormatter()
         dataformate.dateFormat = "yyyy-MM-dd_HH:mm:ss"
         let videoName = dataformate.stringFromDate(currentDate)
         let dirPath = self.getVideoDirPath()
-        return (dirPath as NSString).stringByAppendingPathComponent(videoName+".MOV")
+        
+        let model = KZVideoModel()
+        model.totalVideoPath = (dirPath as NSString).stringByAppendingPathComponent(videoName+".MOV")
+        model.totalThumPath = (dirPath as NSString).stringByAppendingPathComponent(videoName+".JPG")
+        model.recordTime = currentDate
+        return model
     }
     
     class func deletefile(filePath: String!) {
         let fileManager = NSFileManager.defaultManager()
         do {
             try fileManager.removeItemAtPath(filePath)
+            let thumPath = (filePath as NSString).stringByReplacingOccurrencesOfString("MOV", withString: "JPG")
+            try fileManager.removeItemAtPath(thumPath)
         }
         catch let error as NSError {
             print("删除失败:\(error)")
@@ -126,6 +156,130 @@ class KZVideoUtil: NSObject {
     }
 }
 
+//class KZBaseViewController: UIViewController {
+//    
+//}
+
+//MARK: - TransitionAnimator
+public enum KZTransitionType:Int {
+    case Present
+    case Push
+    case Dismiss
+    case Pop
+}
+class KZTransitionManager:NSObject, UIViewControllerAnimatedTransitioning {
+    var animationTime:NSTimeInterval! = 0.4
+    var transitionType:KZTransitionType! = nil
+    private var transitionContext: UIViewControllerContextTransitioning! = nil
+    
+    func transitionDuration(transitionContext: UIViewControllerContextTransitioning?) -> NSTimeInterval {
+        return animationTime
+    }
+    func animateTransition(transitionContext: UIViewControllerContextTransitioning) {
+        self.transitionContext = transitionContext
+        let fromVC = transitionContext.viewControllerForKey(UITransitionContextFromViewControllerKey)
+        let toVC = transitionContext.viewControllerForKey(UITransitionContextToViewControllerKey)
+        
+        let containview = transitionContext.containerView()
+        containview?.addSubview((fromVC?.view)!)
+        containview?.addSubview((toVC?.view)!)
+        if self.transitionType == .Present || self.transitionType == .Push {
+            UIView.animateWithDuration(self.animationTime, delay: 0.0, options: .CurveEaseInOut, animations: {
+                toVC?.view.frame = (fromVC?.view.frame)!
+                }, completion: { (finished) in
+                    if transitionContext.transitionWasCancelled() {
+                        transitionContext.completeTransition(false)
+                        fromVC?.view.hidden = false
+                    }else {
+                        transitionContext.completeTransition(true)
+                        fromVC?.view.hidden = false
+                        toVC?.view.hidden = false
+                    }
+            })
+        }
+        else {
+            UIView.animateWithDuration(self.animationTime, delay: 0.0, options: .CurveEaseInOut, animations: {
+               fromVC?.view.frame = CGRectMake(0, kzSCREEN_HEIGHT, kzSCREEN_WIDTH, kzSCREEN_HEIGHT)
+                }, completion: { (finished) in
+                    if transitionContext.transitionWasCancelled() {
+                        transitionContext.completeTransition(false)
+                        fromVC?.view.hidden = false
+                    }else {
+                        transitionContext.completeTransition(true)
+                        fromVC?.view.hidden = true
+                        toVC?.view.hidden = false
+                    }
+            })
+            
+        }
+        
+    }
+    func animationEnded(transitionCompleted: Bool) {
+        
+    }
+}
+
+//MARK: - Custom View
+class KZStatusBar: UIView {
+    private var recoding = false
+    var isRecoding:Bool {
+        get {
+            return self.recoding
+        }
+        set(newValue){
+            self.recoding = newValue
+            self.setNeedsDisplay()
+        }
+    }
+    private var clear:Bool = false
+    
+    override func drawRect(rect: CGRect) {
+        super.drawRect(rect)
+        
+        let context = UIGraphicsGetCurrentContext()
+        CGContextSetAllowsAntialiasing(context, true)
+        let selfCent = CGPointMake(self.bounds.width/2, self.bounds.height/2)
+        
+        if self.isRecoding {
+            if clear {
+                self.clear = false
+                return
+            }
+        
+            CGContextSetStrokeColorWithColor(context, kzThemeWaringColor.CGColor)
+            CGContextSetFillColorWithColor(context, kzThemeWaringColor.CGColor)
+            CGContextSetLineWidth(context, 1.0)
+            CGContextSetLineCap(context, .Round);
+            CGContextAddArc(context, selfCent.x, selfCent.y, 5, 0, 2.0*CGFloat(M_PI), 0);
+            CGContextDrawPath(context, .FillStroke);
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, Int64(0.5*Double(NSEC_PER_SEC))), dispatch_get_main_queue(), {
+                if !self.isRecoding {
+                    return
+                }
+                self.clear = self.isRecoding
+                self.setNeedsDisplay()
+            })
+        }
+        else {
+            let barW:CGFloat = 20.0
+            let barSpace:CGFloat = 5.0
+            let topEdge:CGFloat = 5.0
+            CGContextSetStrokeColorWithColor(context, UIColor ( red: 0.5, green: 0.5, blue: 0.5, alpha: 0.7 ).CGColor)
+            CGContextSetLineWidth(context, 3.0)
+            CGContextSetLineCap(context, .Round);
+            
+            for index in 0 ..< 3 {
+                CGContextMoveToPoint(context, selfCent.x-(barW/2), topEdge+(barSpace*CGFloat(index)))
+                CGContextAddLineToPoint(context, selfCent.x+(barW/2), topEdge+(barSpace*CGFloat(index)))
+            }
+        
+            CGContextDrawPath(context, .Stroke)
+        }
+        
+    }
+    
+}
+
 class KZfocusView: UIView {
     
     // Only override drawRect: if you perform custom drawing.
@@ -135,7 +289,7 @@ class KZfocusView: UIView {
         // Drawing code
         let context = UIGraphicsGetCurrentContext()
         CGContextSetAllowsAntialiasing(context, true)
-        CGContextSetStrokeColorWithColor(context, UIColor.greenColor().CGColor)
+        CGContextSetStrokeColorWithColor(context, kzThemeTineColor.CGColor)
         CGContextSetLineWidth(context, 1.0)
         
         CGContextMoveToPoint(context, 0.0, 0.0)
@@ -146,6 +300,7 @@ class KZfocusView: UIView {
 }
 
 class KZCloseBtn: UIButton {
+    var color:UIColor = kzThemeGraryColor
     /*
     func setupView() {
         self.layer.opaque = true
@@ -176,7 +331,7 @@ class KZCloseBtn: UIButton {
         
         let context = UIGraphicsGetCurrentContext()
         CGContextSetAllowsAntialiasing(context, true)
-        CGContextSetStrokeColorWithColor(context, UIColor.grayColor().CGColor)
+        CGContextSetStrokeColorWithColor(context, color.CGColor)
         CGContextSetLineWidth(context, 3.0)
         CGContextSetLineCap(context, .Round);
         
@@ -221,7 +376,7 @@ class KZRecordBtn: UIView {
         
         let trackLayer = CAShapeLayer()
         trackLayer.frame = self.bounds
-        trackLayer.strokeColor = UIColor.greenColor().CGColor
+        trackLayer.strokeColor = kzThemeTineColor.CGColor
         trackLayer.fillColor = UIColor.clearColor().CGColor
         trackLayer.opacity = 1.0
         trackLayer.lineCap = kCALineCapRound
@@ -236,7 +391,7 @@ class KZRecordBtn: UIView {
         
         let gradientLayer = CAGradientLayer()
         gradientLayer.frame = self.bounds
-        gradientLayer.colors = [UIColor.greenColor().CGColor, UIColor.yellowColor().CGColor, UIColor.blueColor()]
+        gradientLayer.colors = [kzThemeTineColor.CGColor, UIColor.yellowColor().CGColor, UIColor.blueColor()]
         gradientLayer.locations = [NSNumber(float: 0.3), NSNumber(float: 0.6), NSNumber(float: 1.0)]
         gradientLayer.startPoint = CGPointMake(0.0, 1.0)
         gradientLayer.endPoint = CGPointMake(0.0, 0.0)
@@ -253,7 +408,7 @@ class KZRecordBtn: UIView {
         
         let trackLayer = CAShapeLayer()
         trackLayer.frame = self.bounds
-        trackLayer.strokeColor = UIColor.greenColor().CGColor
+        trackLayer.strokeColor = kzThemeTineColor.CGColor
         trackLayer.fillColor = UIColor.clearColor().CGColor
         trackLayer.opacity = 1.0
         trackLayer.lineCap = kCALineCapRound
@@ -275,6 +430,7 @@ class KZRecordBtn: UIView {
     
 }
 
+//MARK: - videoContro -
 class KZControllerBar: UIView , UIGestureRecognizerDelegate{
     
     var startBtn:KZRecordBtn? = nil
@@ -284,7 +440,7 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
     
     let progressLine = UIView()
     var touchIsInside:Bool = true
-    var recordDidStart:Bool = false
+    var recording:Bool = false
     
     var timer:NSTimer! = nil
     var surplusTime:NSTimeInterval! = nil
@@ -330,7 +486,7 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         self.videoListBtn.addTarget(self, action: #selector(videoListAction), forControlEvents: .TouchUpInside)
 //        self.videoListBtn.backgroundColor = kzThemeTineColor
         self.addSubview(self.videoListBtn)
-        let videoList = KZVideoUtil.getVideoList()
+        let videoList = KZVideoUtil.getSortVideoList()
         if videoList.count == 0 {
             self.videoListBtn.hidden = true
         }
@@ -351,6 +507,7 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         self.progressLine.frame = CGRectMake(0, 0, self.bounds.width, 2)
         self.progressLine.hidden = false
         self.surplusTime = kzRecordTime
+        self.recording = true
         if self.timer == nil {
             self.timer = NSTimer(timeInterval: 1.0, target: self, selector: #selector(KZControllerBar.recordTimerAction), userInfo: nil, repeats: true)
             NSRunLoop.currentRunLoop().addTimer(self.timer, forMode: NSDefaultRunLoopMode)
@@ -367,12 +524,13 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         }
     }
     
-    private func endTimer() {
+    private func endRecordSet() {
         self.progressLine.hidden = true
         self.timer?.invalidate()
         self.timer = nil
-        
+        self.recording = false
         self.startBtn?.alpha = 1
+        self.surplusTime = kzRecordTime
     }
     
     // MARK: - UIGestureRecognizerDelegate --
@@ -416,12 +574,16 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         case .Changed:
             self.touchIsInside = point.y >= 0
             if !touchIsInside {
+                self.progressLine.backgroundColor = kzThemeWaringColor
                 self.delegate?.videoWillCancel!(self)
+            }
+            else {
+                self.progressLine.backgroundColor = kzThemeTineColor
             }
 //            print("changed")
             break
         case .Ended:
-            self.endTimer()
+            self.endRecordSet()
             if !touchIsInside {
                 self.videoCancelAction()
             }
@@ -455,9 +617,11 @@ class KZControllerBar: UIView , UIGestureRecognizerDelegate{
         }) { (finished) in
             
             self.surplusTime = self.surplusTime - 1
-            self.delegate?.videoDidRecordSEC!(self)
+            if self.recording {
+                self.delegate?.videoDidRecordSEC!(self)
+            }
             if self.surplusTime <= 0.0 {
-                self.endTimer()
+                self.endRecordSet()
                 self.videoEndAction()
             }
         }

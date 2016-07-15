@@ -14,12 +14,17 @@
                         <viewControllerLayoutGuide type="bottom" id="wfy-db-euE"/>
                     </layoutGuides>
                     <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
-                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="bg.png" translatesAutoresizingMaskIntoConstraints="NO" id="o5o-cU-qLz">
+                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                            </imageView>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="7Pd-1h-CwP">
-                                <rect key="frame" x="270" y="285" width="60" height="30"/>
-                                <state key="normal" title="开始录制"/>
+                                <rect key="frame" x="158" y="319" width="60" height="30"/>
+                                <state key="normal" title="开始录制">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                </state>
                                 <connections>
                                     <action selector="videoAction:" destination="BYZ-38-t0r" eventType="touchUpInside" id="xID-ap-HdY"/>
                                 </connections>
@@ -27,13 +32,22 @@
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                         <constraints>
+                            <constraint firstItem="wfy-db-euE" firstAttribute="top" secondItem="o5o-cU-qLz" secondAttribute="bottom" id="3jG-Ze-zx4"/>
+                            <constraint firstItem="o5o-cU-qLz" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" id="99J-yB-Pt9"/>
                             <constraint firstItem="7Pd-1h-CwP" firstAttribute="centerX" secondItem="8bC-Xf-vdC" secondAttribute="centerX" id="K4x-L4-VYr"/>
                             <constraint firstItem="7Pd-1h-CwP" firstAttribute="centerY" secondItem="8bC-Xf-vdC" secondAttribute="centerY" id="MYj-og-8Ul"/>
+                            <constraint firstItem="o5o-cU-qLz" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="ToF-KN-OvA"/>
+                            <constraint firstAttribute="trailing" secondItem="o5o-cU-qLz" secondAttribute="trailing" id="cnw-Bt-bvq"/>
                         </constraints>
                     </view>
+                    <simulatedScreenMetrics key="simulatedDestinationMetrics" type="retina47"/>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
+            <point key="canvasLocation" x="302.5" y="430.5"/>
         </scene>
     </scenes>
+    <resources>
+        <image name="bg.png" width="496" height="890"/>
+    </resources>
 </document>
