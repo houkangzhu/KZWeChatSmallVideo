@@ -7,9 +7,14 @@
 //
 
 import UIKit
-
+import AVFoundation
+import MediaPlayer
 class ViewController: UIViewController , KZVideoViewControllerDelegate{
 
+    var video:KZVideoModel? = nil
+    
+    @IBOutlet weak var playBtn: UIButton!
+    @IBOutlet weak var videoView: UIView!
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
@@ -26,9 +31,24 @@ class ViewController: UIViewController , KZVideoViewControllerDelegate{
 //        self.presentViewController(videoVC, animated: true, completion: nil)
         videoVC.startAnimation()
     }
+    
+    @IBAction func playAction(sender: AnyObject) {
+        guard self.video != nil else {
+            return
+        }
+    }
 
     func videoViewController(videoViewController: KZVideoViewController!, didRecordVideo video: KZVideoModel!) {
+        self.playBtn.setBackgroundImage(UIImage(contentsOfFile: video.totalThumPath!), forState: .Normal)
+        self.video = video
+        self.videoView.layoutIfNeeded()
         
+        for subView in self.videoView.subviews {
+            subView.removeFromSuperview()
+        }
+        
+        let player = KZVideoPlayer(frame: self.videoView.bounds, aVideoURL: NSURL(fileURLWithPath: video.totalVideoPath))
+        self.videoView.addSubview(player)
     }
     
     func videoViewControllerDidCancel(videoViewController: KZVideoViewController!) {

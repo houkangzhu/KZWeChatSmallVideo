@@ -19,7 +19,7 @@ import AVFoundation
 
 private var currentVC:KZVideoViewController? = nil
 
-public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCaptureFileOutputRecordingDelegate {
+public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCaptureFileOutputRecordingDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     private let view:UIView = UIView(frame:UIScreen.mainScreen().bounds)
     
@@ -38,7 +38,9 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
     private var videoPreLayer:AVCaptureVideoPreviewLayer! = nil
     private var videoDevice:AVCaptureDevice! = nil
     private var moveOut:AVCaptureMovieFileOutput? = nil
+//    private var videoDataOut:AVCaptureVideoDataOutput? = nil
     
+//    AVCaptureVideoDataOutput
     private var currentRecord:KZVideoModel? = nil
     private var currentRecordIsCancel:Bool = false
     
@@ -69,9 +71,12 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
             self.view.backgroundColor = UIColor.clearColor()
             self.actionView.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, kzSCREEN_HEIGHT*0.6)
             }) { (finished) in
-            self.view.removeFromSuperview()
-            currentVC = nil
+            self.closeView()
         }
+    }
+    func closeView() {
+        self.view.removeFromSuperview()
+        currentVC = nil
     }
     
     private func controllerSetup() {
@@ -152,6 +157,12 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
         let moveOut = AVCaptureMovieFileOutput()
         self.moveOut = moveOut
         
+//        self.videoDataOut = AVCaptureVideoDataOutput()
+//        self.videoDataOut?.videoSettings = [kCVPixelBufferPixelFormatTypeKey:NSNumber(unsignedInt: kCVPixelFormatType_32BGRA)]
+//        self.videoDataOut?.setSampleBufferDelegate(self, queue: dispatch_get_main_queue())
+        
+//        self.videoWriter = AVAssetWriter()
+        
         let session = AVCaptureSession()
         if session.canSetSessionPreset(AVCaptureSessionPreset352x288) {
             session.canSetSessionPreset(AVCaptureSessionPreset352x288)
@@ -165,6 +176,9 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
         if session.canAddOutput(moveOut) {
             session.addOutput(moveOut)
         }
+//        if session.canAddOutput(self.videoDataOut) {
+//            session.addOutput(self.videoDataOut)
+//        }
         self.videoSession = session
         
         self.videoPreLayer = AVCaptureVideoPreviewLayer(session: session)
@@ -215,6 +229,8 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
         self.currentRecordIsCancel = false
         let outUrl = NSURL(fileURLWithPath: self.currentRecord!.totalVideoPath)
         self.moveOut?.startRecordingToOutputFileURL(outUrl, recordingDelegate: self)
+        
+//        self.videoDataOut.
         self.topSlideView.isRecoding = true
         
         self.statusInfo.textColor = kzThemeTineColor
@@ -230,7 +246,8 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
         self.moveOut?.stopRecording()
         self.topSlideView.isRecoding = false
         
-        self.delegate?.videoViewController!(self, didRecordVideo: self.currentRecord!)
+//        self.delegate?.videoViewController!(self, didRecordVideo: self.currentRecord!)
+//        self.endAnimation()
     }
     
     func videoDidCancel(controllerBar: KZControllerBar!) {
@@ -268,9 +285,11 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
     func videoOpenVideoList(controllerBar: KZControllerBar!) {
         print("查看视频列表")
         let listVideoVC = KZVideoListViewController()
-//        listVideoVC.view.frame = self.view.frame
-//        self.view.addSubview(listVideoVC.view)
-//        self.addChildViewController(listVideoVC)
+        listVideoVC.selectBlock = { (listVC, selectVideo) in
+            self.currentRecord = selectVideo
+            self.delegate?.videoViewController!(self, didRecordVideo: selectVideo)
+            self.closeView()
+        }
         listVideoVC.showAniamtion()
     }
     
@@ -283,9 +302,47 @@ public class KZVideoViewController: NSObject, KZControllerBarDelegate, AVCapture
         print("视频完成录制......")
         if !currentRecordIsCancel {
             KZVideoUtil.saveThumImage(outputFileURL, second: 1)
+            self.delegate?.videoViewController!(self, didRecordVideo: self.currentRecord!)
+            self.endAnimation()
         }
     }
+    
+    // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+    public func captureOutput(captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, fromConnection connection: AVCaptureConnection!) {
+        
+        let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)!
+        CVPixelBufferLockBaseAddress( pixelBuffer, 0 );
+        let len = CVPixelBufferGetDataSize(pixelBuffer)
+        
+        let pixel = CVPixelBufferGetBaseAddress(pixelBuffer)
+        
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let pxPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer)
+        
+        
+        var newPixelBuffer: CVPixelBuffer? = nil
+        
+        let newWidth = 480
+        let newHeight = 480*height/width
+        let options = [kCVPixelBufferCGImageCompatibilityKey as String:NSNumber(bool:true), kCVPixelBufferCGBitmapContextCompatibilityKey as String:NSNumber(bool:true)]
+        let status = CVPixelBufferCreateWithBytes(kCFAllocatorDefault, newWidth, newHeight, kCVPixelFormatType_32BGRA, pixel, pxPerRow, nil, nil, options, &newPixelBuffer)
+        
+        let description = CMSampleBufferGetFormatDescription(sampleBuffer)
+        var newBuffer:CMSampleBuffer? = nil
+        
+        if status == kCVReturnSuccess {
+            CMSampleBufferCreateForImageBuffer(kCFAllocatorDefault, newPixelBuffer!, true, nil, nil, description!, nil, &newBuffer)
+        }
 
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
+        print("width : \(width)\theight : \(height)\nlen : \(len)80")
+    }
+    
+    public func captureOutput(captureOutput: AVCaptureOutput!, didDropSampleBuffer sampleBuffer: CMSampleBuffer!, fromConnection connection: AVCaptureConnection!) {
+        
+    }
+    
     /*
     // MARK: - UIViewControllerTransitioningDelegate
     func animationControllerForPresentedController(presented: UIViewController, presentingController presenting: UIViewController, sourceController source: UIViewController) -> UIViewControllerAnimatedTransitioning? {

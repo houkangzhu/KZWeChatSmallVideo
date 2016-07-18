@@ -115,6 +115,9 @@ private var currentListVC:KZVideoListViewController? = nil
 
 class KZVideoListViewController: NSObject, UICollectionViewDelegate, UICollectionViewDataSource {
 
+    var selectBlock:((KZVideoListViewController,KZVideoModel) -> (Void))? = nil
+    
+    
     let actionView:UIView = UIView()
     private var collection:UICollectionView! = nil
     private let titleLabel:UILabel! = UILabel()
@@ -142,7 +145,7 @@ class KZVideoListViewController: NSObject, UICollectionViewDelegate, UICollectio
         }
         self.setupCollectionView()
     }
-    func closeAnimation() {
+   private func closeAnimation() {
         UIView.animateWithDuration(0.3, delay: 0.0, options: .CurveEaseInOut, animations: {
             self.actionView.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, 0, self.actionView.bounds.width)
             self.actionView.alpha = 0.0
@@ -225,7 +228,7 @@ class KZVideoListViewController: NSObject, UICollectionViewDelegate, UICollectio
         }
     }
 
-    func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
+   func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
         if indexPath.item == self.dataArr.count {
             let addCell = collectionView.dequeueReusableCellWithReuseIdentifier("AddCell", forIndexPath: indexPath)
             return addCell
@@ -248,10 +251,11 @@ class KZVideoListViewController: NSObject, UICollectionViewDelegate, UICollectio
     
     func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
         if indexPath.item == self.dataArr.count { // add NewVideo
-            
+            self.closeAnimation()
         }
         else {
-            
+            self.selectBlock?(self, self.dataArr[indexPath.item])
+            self.closeAnimation()
         }
     }
     /*
