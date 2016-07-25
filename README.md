@@ -1,3 +1,5 @@
 # KZWeChatSmallVideo
 仿微信小视频的录制-swift版
-进行中......
+
+  看objective-C版
+
